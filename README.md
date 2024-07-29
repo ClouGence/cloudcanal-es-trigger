@@ -1,7 +1,7 @@
 # cloudcanal-es-trigger
 The ElasticSearch plugin for capture data change.
 
-## Build
+## Quick Start
 
 - In product root directory.
 
@@ -28,6 +28,7 @@ The ElasticSearch plugin for capture data change.
   ```
   
   > logger.ccplugin.name = com.clougence.cloudcanal.es78.trigger.CcEsIdxOpListener
+  > 
   > logger.ccplugin.level = info
   
 - Restart ElasticSearch and have fun.
