@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenLocal()
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    mavenCentral()
+}
+
+group = 'com.clougence.cloudcanal.es'
+version = '0.0.1-SNAPSHOT'
+java.sourceCompatibility = JavaVersion.VERSION_1_8
+
+Properties properties = new Properties()
+try (FileInputStream fis = new FileInputStream(new File(rootDir, "gradle.properties"))) {
+    properties.load(fis)
+}
+
+ext {
+    LOG4J_SLF4J_IMPL_VERSION = properties.getProperty("cc.es.trigger.log4j-slf4j-impl.version")
+}
+
+dependencies {
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:${LOG4J_SLF4J_IMPL_VERSION}") {
+        //conflict with elasticsearch
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+    }
+
+    compileOnly 'org.projectlombok:lombok:1.18.20'
+    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+
+    // Use JUnit Jupiter for testing.
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.2'
+    testCompileOnly 'org.projectlombok:lombok:1.18.20'
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile) {
+    options.warnings(false)
+}
+
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}
