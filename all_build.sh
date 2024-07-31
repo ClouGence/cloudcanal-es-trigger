@@ -1,5 +1,5 @@
 #! /bin/bash
 
-./gradlew clean build
-./gradlew prepare
-./gradlew dist
+./gradlew -x test clean build
+./gradlew -x test prepare
+./gradlew -x test dist

@@ -13,6 +13,9 @@ plugins {
 
 dependencies {
     implementation project(':es-trigger-base')
+    implementation('org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.22') {
+        exclude group: 'org.elasticsearch', module: 'elasticsearch'
+    }
     compileOnly('org.elasticsearch:elasticsearch:7.17.22')
 }
 

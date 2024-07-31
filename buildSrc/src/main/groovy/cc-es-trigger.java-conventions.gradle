@@ -28,6 +28,8 @@ dependencies {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
 
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
