@@ -1,7 +1,7 @@
 package com.clougence.cloudcanal.es78.trigger.ds;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.StringUtils;
@@ -22,14 +22,16 @@ import lombok.Getter;
  */
 public class Es7ClientConn {
 
-    private static final Logger       log        = LoggerFactory.getLogger(Es7ClientConn.class);
+    private static final Logger              log         = LoggerFactory.getLogger(Es7ClientConn.class);
 
-    public static final Es7ClientConn instance   = new Es7ClientConn();
+    public static final Es7ClientConn        instance    = new Es7ClientConn();
 
-    public volatile AtomicBoolean     refreshing = new AtomicBoolean(false);
+    public volatile AtomicBoolean            refreshing  = new AtomicBoolean(false);
 
     @Getter
-    private RestHighLevelClient       esClient;
+    private RestHighLevelClient              esClient;
+
+    private static final Map<String, Object> configInMem = new ConcurrentHashMap<>();
 
     private Es7ClientConn(){
     }
@@ -52,24 +54,28 @@ public class Es7ClientConn {
         reCreateEsClient(connConfig);
     }
 
-    public void refreshBySettings(ClusterSettings settings) {
-        Map<String, Object> config = new HashMap<>();
-
+    public void addHostSettingConsumer(ClusterSettings settings) {
         String hosts = settings.get(CcEsIdxTriggerPlugin.triggerIdxHost);
-        if (StringUtils.isBlank(hosts)) {
-            log.error(EsTriggerConstant.TRIGGER_IDX_HOST_KEY + " is blank,fail to create or re-create esClient.");
-            return;
-        }
-
-        config.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, hosts);
+        configInMem.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, hosts);
 
         String user = settings.get(CcEsIdxTriggerPlugin.triggerIdxUser);
-        config.put(EsTriggerConstant.TRIGGER_IDX_USER_KEY, user);
+        configInMem.put(EsTriggerConstant.TRIGGER_IDX_USER_KEY, user);
 
         String password = settings.get(CcEsIdxTriggerPlugin.triggerIdxPassword);
-        config.put(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, password);
+        configInMem.put(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, password);
 
-        refreshByConfig(config);
+        log.info("Init host settings,hosts:" + hosts + ",user:" + user);
+
+        settings.addSettingsUpdateConsumer(CcEsIdxTriggerPlugin.triggerIdxHost, s -> configChange(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, s));
+        settings.addSettingsUpdateConsumer(CcEsIdxTriggerPlugin.triggerIdxUser, s -> configChange(EsTriggerConstant.TRIGGER_IDX_USER_KEY, s));
+        settings.addSettingsUpdateConsumer(CcEsIdxTriggerPlugin.triggerIdxPassword, s -> configChange(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, s));
+
+        refreshByConfig(configInMem);
+    }
+
+    protected void configChange(String propertyName, Object propertyValue) {
+        configInMem.put(propertyName, propertyValue);
+        refreshByConfig(configInMem);
     }
 
     protected synchronized void reCreateEsClient(EsConnConfig connConfig) {

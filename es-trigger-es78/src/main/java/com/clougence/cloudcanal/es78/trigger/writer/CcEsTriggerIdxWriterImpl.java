@@ -1,7 +1,8 @@
 package com.clougence.cloudcanal.es78.trigger.writer;
 
 import java.io.IOException;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,13 +31,15 @@ import com.clougence.cloudcanal.es_base.EsTriggerConstant;
  */
 public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, ComponentLifeCycle {
 
-    private static final AtomicBoolean inited            = new AtomicBoolean(false);
+    private static final AtomicBoolean inited             = new AtomicBoolean(false);
 
-    private static final Logger        log               = LoggerFactory.getLogger(CcEsTriggerIdxWriterImpl.class);
+    private static final AtomicBoolean triggerIdxIdInited = new AtomicBoolean(false);
 
-    private final AtomicLong           incrementId       = new AtomicLong(0);
+    private static final Logger        log                = LoggerFactory.getLogger(CcEsTriggerIdxWriterImpl.class);
 
-    private long                       currentStepMaxVal = 0;
+    private final AtomicLong           incrementId        = new AtomicLong(0);
+
+    private long                       currentStepMaxVal  = 0;
 
     @Override
     public void start() {
@@ -49,16 +52,24 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
 
     private void initTriggerIdxId() {
         try {
+            if (Es7ClientConn.instance.getEsClient() == null) {
+                return;
+            }
+
             GetSettingsRequest req = new GetSettingsRequest().indices(EsTriggerConstant.ES_TRIGGER_IDX);
             GetSettingsResponse res = Es7ClientConn.instance.getEsClient().indices().getSettings(req, RequestOptions.DEFAULT);
             String s = res.getSetting(EsTriggerConstant.ES_TRIGGER_IDX, EsTriggerConstant.TRIGGER_IDX_MAX_SCN_KEY);
             if (StringUtils.isBlank(s)) {
                 updateIncreIdToNextStep(0);
+            } else {
+                updateIncreIdToNextStep(Long.parseLong(s));
             }
+
+            triggerIdxIdInited.compareAndSet(false, true);
         } catch (Exception e) {
-            String msg = "Init trigger index settings failed.msg:" + ExceptionUtils.getRootCauseMessage(e);
+            String msg = "Init trigger index settings failed,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e);
             log.error(msg, e);
-            throw new RuntimeException(msg, e);
+            //            throw new RuntimeException(msg, e);
         }
     }
 
@@ -73,6 +84,8 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
                 throw new RuntimeException("Update trigger index settings failed, acknowledged is false.");
             }
 
+            log.info("Updated incremental id,currStepMaxVal:" + nextVal);
+
             currentStepMaxVal = nextVal;
         } catch (Exception e) {
             String msg = "Update trigger index settings failed.msg:" + ExceptionUtils.getRootCauseMessage(e);
@@ -82,6 +95,14 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
     }
 
     private synchronized long nextId() {
+        if (!triggerIdxIdInited.get()) {
+            initTriggerIdxId();
+
+            if (!triggerIdxIdInited.get()) {
+                throw new IllegalArgumentException("Trigger idx id can not be inited,maybe datasource not ready.");
+            }
+        }
+
         if (incrementId.get() > currentStepMaxVal) {
             updateIncreIdToNextStep(incrementId.get());
             return nextId();
@@ -97,9 +118,12 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
         }
     }
 
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssSSS");
+
     @Override
     public void insertTriggerIdx(String idxName, DataOp dataOp, String id, ParsedDocument doc, long genTs, long seqNo) throws IOException {
         if (Es7ClientConn.instance.getEsClient() == null) {
+            log.warn("Es client is null,skip write data.");
             return;
         }
 
@@ -109,7 +133,7 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
         re.put("idx_name", idxName);
         re.put("event_type", dataOp.getOpInt());
         re.put("row_data", doc.source());
-        re.put("create_time", new Date());
+        re.put("create_time", LocalDateTime.now().format(formatter));
 
         UpdateRequest ur = new UpdateRequest().index(EsTriggerConstant.ES_TRIGGER_IDX).id(gid + "").doc(re).docAsUpsert(true);
         Es7ClientConn.instance.getEsClient().update(ur, RequestOptions.DEFAULT);

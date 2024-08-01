@@ -12,5 +12,11 @@ public interface CcMetaService {
 
     void createTriggerIdx(EsConnConfig connConfig);
 
-    void upsertSettings(EsConnConfig connConfig, List<String> indexes, Map<String, Object> settings);
+    void upsertIndexSettings(EsConnConfig connConfig, List<String> indexes, Map<String, Object> settings);
+
+    void upsertNodeSettings(EsConnConfig connConfig, Map<String, Object> settings);
+
+    void deleteNodeSettings(EsConnConfig connConfig, Map<String, Object> settings);
+
+    Map<String, Object> queryCcNodeSettings(EsConnConfig connConfig);
 }

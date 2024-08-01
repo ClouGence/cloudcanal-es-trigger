@@ -13,17 +13,18 @@ plugins {
 
 dependencies {
     implementation project(':es-trigger-base')
-    implementation('org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.22') {
+    implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:${ES_VERSION}") {
         exclude group: 'org.elasticsearch', module: 'elasticsearch'
     }
-    compileOnly('org.elasticsearch:elasticsearch:7.17.22')
+    compileOnly("org.elasticsearch:elasticsearch:${ES_VERSION}")
+    testImplementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:${ES_VERSION}")
 }
 
 tasks.register("prepare") {
     dependsOn build
 
     copy {
-        from "src/main/resources"
+        from("src/main/resources")
         into "${buildDir}/es-trigger-es78"
     }
 

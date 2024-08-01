@@ -18,6 +18,7 @@ try (FileInputStream fis = new FileInputStream(new File(rootDir, "gradle.propert
 }
 
 ext {
+    ES_VERSION = properties.getProperty("cc.es.version")
     LOG4J_SLF4J_IMPL_VERSION = properties.getProperty("cc.es.trigger.log4j-slf4j-impl.version")
 }
 
