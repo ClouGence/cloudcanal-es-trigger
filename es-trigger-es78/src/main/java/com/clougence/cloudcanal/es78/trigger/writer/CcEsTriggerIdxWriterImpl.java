@@ -67,7 +67,7 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
 
             triggerIdxIdInited.compareAndSet(false, true);
         } catch (Exception e) {
-            String msg = "Init trigger index settings failed,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e);
+            String msg = "Init trigger index settings failed,init later.msg:" + ExceptionUtils.getRootCauseMessage(e);
             log.error(msg, e);
             //            throw new RuntimeException(msg, e);
         }
@@ -121,7 +121,7 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssSSS");
 
     @Override
-    public void insertTriggerIdx(String idxName, DataOp dataOp, String id, ParsedDocument doc, long genTs, long seqNo) throws IOException {
+    public void insertTriggerIdx(String idxName, DataOp dataOp, String id, ParsedDocument doc) throws IOException {
         if (Es7ClientConn.instance.getEsClient() == null) {
             log.warn("Es client is null,skip write data.");
             return;
@@ -132,7 +132,12 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
         re.put("scn", gid);
         re.put("idx_name", idxName);
         re.put("event_type", dataOp.getOpInt());
-        re.put("row_data", doc.source());
+        re.put("pk", id);
+
+        if (doc != null && doc.source() != null) {
+            re.put("row_data", doc.source().utf8ToString());
+        }
+
         re.put("create_time", LocalDateTime.now().format(formatter));
 
         UpdateRequest ur = new UpdateRequest().index(EsTriggerConstant.ES_TRIGGER_IDX).id(gid + "").doc(re).docAsUpsert(true);

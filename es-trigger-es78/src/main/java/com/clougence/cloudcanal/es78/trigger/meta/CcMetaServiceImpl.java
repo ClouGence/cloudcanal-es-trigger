@@ -52,8 +52,16 @@ public class CcMetaServiceImpl implements CcMetaService {
             eventTypeF.put("index", true);
             properties.put("event_type", eventTypeF);
 
+            Map<String, Object> pkF = new HashMap<>();
+            pkF.put("type", "text");
+            pkF.put("index", true);
+            pkF.put("analyzer", "standard");
+            properties.put("pk", pkF);
+
             Map<String, Object> rowDataF = new HashMap<>();
-            rowDataF.put("type", "nested");
+            rowDataF.put("type", "text");
+            rowDataF.put("index", true);
+            rowDataF.put("analyzer", "standard");
             properties.put("row_data", rowDataF);
 
             Map<String, Object> cDateF = new HashMap<>();

@@ -60,22 +60,13 @@ public class CcEsIdxTriggerPlugin extends Plugin {
 
     @Override
     public void onIndexModule(IndexModule indexModule) {
-        if (triggerIdxWriter == null) {
-            initIdxWriter();
-        }
+        log.info("Add index listener,index:" + indexModule.getIndex());
 
         final CcEsIdxOpListener cdcListener = new CcEsIdxOpListener(indexModule, triggerIdxWriter);
         cdcListener.start();
 
         indexModule.addSettingsUpdateConsumer(cdcEnableSetting, cdcListener);
         indexModule.addIndexOperationListener(cdcListener);
-    }
-
-    protected synchronized void initIdxWriter() {
-        if (triggerIdxWriter == null) {
-            triggerIdxWriter = new CcEsTriggerIdxWriterImpl();
-            ((ComponentLifeCycle) triggerIdxWriter).start();
-        }
     }
 
     @Override
@@ -85,6 +76,14 @@ public class CcEsIdxTriggerPlugin extends Plugin {
                                                Supplier<RepositoriesService> repositoriesServiceSupplier) {
         log.info(this.getClass().getSimpleName() + " createComponents");
         Es7ClientConn.instance.addHostSettingConsumer(clusterService.getClusterSettings());
+        initIdxWriter();
         return super.createComponents(client, clusterService, threadPool, resourceWatcherService, scriptService, xContentRegistry, environment, nodeEnvironment, namedWriteableRegistry, indexNameExpressionResolver, repositoriesServiceSupplier);
+    }
+
+    protected synchronized void initIdxWriter() {
+        if (triggerIdxWriter == null) {
+            triggerIdxWriter = new CcEsTriggerIdxWriterImpl();
+            ((ComponentLifeCycle) triggerIdxWriter).start();
+        }
     }
 }
