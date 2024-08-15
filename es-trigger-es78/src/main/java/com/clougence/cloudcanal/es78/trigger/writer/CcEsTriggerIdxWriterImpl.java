@@ -21,7 +21,7 @@ import org.elasticsearch.index.mapper.ParsedDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.clougence.cloudcanal.es78.trigger.DataOp;
+import com.clougence.cloudcanal.es78.trigger.TriggerEventType;
 import com.clougence.cloudcanal.es78.trigger.ds.Es7ClientConn;
 import com.clougence.cloudcanal.es_base.ComponentLifeCycle;
 import com.clougence.cloudcanal.es_base.EsTriggerConstant;
@@ -121,7 +121,7 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssSSS");
 
     @Override
-    public void insertTriggerIdx(String idxName, DataOp dataOp, String id, ParsedDocument doc) throws IOException {
+    public void insertTriggerIdx(String idxName, TriggerEventType dataOp, String id, ParsedDocument doc) throws IOException {
         if (Es7ClientConn.instance.getEsClient() == null) {
             log.warn("Es client is null,skip write data.");
             return;
@@ -131,7 +131,7 @@ public class CcEsTriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Component
         long gid = nextId();
         re.put("scn", gid);
         re.put("idx_name", idxName);
-        re.put("event_type", dataOp.getOpInt());
+        re.put("event_type", dataOp.getCode());
         re.put("pk", id);
 
         if (doc != null && doc.source() != null) {

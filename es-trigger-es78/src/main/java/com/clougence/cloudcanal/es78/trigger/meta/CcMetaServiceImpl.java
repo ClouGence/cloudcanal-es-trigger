@@ -46,10 +46,11 @@ public class CcMetaServiceImpl implements CcMetaService {
             idxNameF.put("analyzer", "standard");
             properties.put("idx_name", idxNameF);
 
-            //1:INSERT,2:UPDATE,3:DELETE
+            //I:INSERT,U:UPDATE,D:DELETE
             Map<String, Object> eventTypeF = new HashMap<>();
-            eventTypeF.put("type", "short");
+            eventTypeF.put("type", "text");
             eventTypeF.put("index", true);
+            eventTypeF.put("analyzer", "standard");
             properties.put("event_type", eventTypeF);
 
             Map<String, Object> pkF = new HashMap<>();
