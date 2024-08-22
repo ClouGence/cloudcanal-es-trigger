@@ -27,7 +27,7 @@ The ElasticSearch plugin for capture data change.
   vi ${es_home}/config/log4j2.properties
   ```
   
-  > logger.ccplugin.name = com.clougence.cloudcanal.es78.trigger.CcEsIdxOpListener
+  > logger.ccplugin.name = com.clougence.cloudcanal.es7.trigger.CcEs7IdxOpListener
   > 
   > logger.ccplugin.level = info
   
