@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -75,8 +76,14 @@ public class CcEs7IdxTriggerPlugin extends Plugin {
                                                NamedWriteableRegistry namedWriteableRegistry, IndexNameExpressionResolver indexNameExpressionResolver,
                                                Supplier<RepositoriesService> repositoriesServiceSupplier) {
         log.info(this.getClass().getSimpleName() + " createComponents");
-        Es7ClientConn.instance.addHostSettingConsumer(clusterService.getClusterSettings());
-        initIdxWriter();
+        try {
+            Es7ClientConn.instance.addHostSettingConsumer(clusterService.getClusterSettings());
+            initIdxWriter();
+        } catch (Exception e) {
+            // not throw, or will make ElasticSearch node fail.
+            log.error("Create components FAILED,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e), e);
+        }
+
         return super.createComponents(client, clusterService, threadPool, resourceWatcherService, scriptService, xContentRegistry, environment, nodeEnvironment, namedWriteableRegistry, indexNameExpressionResolver, repositoriesServiceSupplier);
     }
 

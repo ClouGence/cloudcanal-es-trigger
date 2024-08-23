@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.index.IndexModule;
 import org.elasticsearch.plugins.Plugin;
@@ -60,8 +61,13 @@ public class CcEs8IdxTriggerPlugin extends Plugin {
     @Override
     public Collection<?> createComponents(PluginServices services) {
         log.info(this.getClass().getSimpleName() + " createComponents");
-        Es8ClientConn.instance.addHostSettingConsumer(services.clusterService().getClusterSettings());
-        initIdxWriter();
+        try {
+            Es8ClientConn.instance.addHostSettingConsumer(services.clusterService().getClusterSettings());
+            initIdxWriter();
+        } catch (Exception e) {
+            // not throw, or will make ElasticSearch node fail.
+            log.error("Create components FAILED,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e), e);
+        }
         return super.createComponents(services);
     }
 
