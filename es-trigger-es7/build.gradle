@@ -11,6 +11,8 @@ plugins {
     id 'cc-es-trigger.java-conventions'
 }
 
+java.sourceCompatibility = JavaVersion.VERSION_1_8
+
 dependencies {
     implementation project(':es-trigger-base')
     implementation("org.elasticsearch.client:elasticsearch-rest-high-level-client:${ES7_VERSION}") {
