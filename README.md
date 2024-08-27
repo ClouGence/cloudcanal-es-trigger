@@ -1,6 +1,6 @@
 ## Intro
 
-The ElasticSearch plugin for change capture data (aka CDC).
+The ElasticSearch plugin for change data capture (aka CDC).
 
 Now support ElasticSearch 7.x and 8.x .
 
