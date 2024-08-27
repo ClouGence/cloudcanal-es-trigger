@@ -94,7 +94,7 @@ public abstract class AbstractCcEsTriggerIdxWriter implements Runnable, CcEsTrig
 
     @Override
     public void insertTriggerIdx(String idxName, TriggerEventType dataOp, String id, String docJson) throws IOException {
-        if (isClientInited()) {
+        if (!isClientInited()) {
             log.warn("Es client is null,skip write data.");
             return;
         }

@@ -75,8 +75,6 @@ public class CcEs7TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
             boolean offered = this.cache.offer(ir, 2, TimeUnit.SECONDS);
             if (!offered) {
                 log.warn("Offer to write cache timeout cause no space left,just skip and record here,idx_name:" + srcIdx + ",_id:" + srcId);
-            } else {
-                log.info("Offer document to cache success,_id:" + srcId);
             }
         } catch (InterruptedException e) {
             log.warn("Offer to cache interruppted,but skip,idx_name:" + srcIdx + ",_id:" + srcId);
@@ -89,7 +87,7 @@ public class CcEs7TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
             while (!Thread.currentThread().isInterrupted()) {
                 List<IndexRequest> irs = new ArrayList<>();
                 int real = cache.drainTo(irs, batchSize);
-                log.info("Drain " + real + " documents from cache");
+                //                log.info("Drain " + real + " documents from cache");
                 if (real > 0) {
                     BulkRequest reqs = new BulkRequest();
                     for (IndexRequest ir : irs) {
