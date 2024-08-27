@@ -21,10 +21,7 @@ import co.elastic.clients.elasticsearch.cluster.GetClusterSettingsRequest;
 import co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
 import co.elastic.clients.elasticsearch.cluster.PutClusterSettingsRequest;
 import co.elastic.clients.elasticsearch.cluster.PutClusterSettingsResponse;
-import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
-import co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
-import co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
+import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.json.JsonData;
 
 /** @author bucketli 2024/7/30 14:40:10 */
@@ -151,6 +148,34 @@ public class CcEs8MetaServiceImpl implements CcMetaService {
     }
 
     @Override
+    public Map<String, Object> queryIndexCcSettings(EsConnConfig connConfig, String idxName, List<String> keys) {
+        try {
+            GetIndicesSettingsRequest req = new GetIndicesSettingsRequest.Builder().index(idxName).name(keys).build();
+            GetIndicesSettingsResponse res = Es8ClientHelper.generateEsClient(connConfig).indices().getSettings(req);
+            IndexSettings settings = res.result().get(idxName).settings();
+            Map<String, Object> re = new HashMap<>();
+            if (settings != null && settings.index() != null) {
+                Map<String, JsonData> x = settings.index().otherSettings();
+                if (x != null) {
+                    for (String key : keys) {
+                        String realKey = key.substring(key.lastIndexOf(".") + 1);
+                        JsonData d = x.get(realKey);
+                        if (d != null) {
+                            re.put(key, d.to(String.class));
+                        }
+                    }
+                }
+            }
+
+            return re;
+        } catch (Exception e) {
+            String errMsg = "Upsert settings to node,msg:" + ExceptionUtils.getRootCauseMessage(e);
+            log.error(errMsg, e);
+            throw new RuntimeException(errMsg, e);
+        }
+    }
+
+    @Override
     public Map<String, Object> queryCcNodeSettings(EsConnConfig connConfig) {
         try {
             GetClusterSettingsRequest req = new GetClusterSettingsRequest.Builder().includeDefaults(false).build();
@@ -158,23 +183,12 @@ public class CcEs8MetaServiceImpl implements CcMetaService {
 
             GetClusterSettingsResponse res = esClient.cluster().getSettings(req);
 
-            Map<String, Object> re = new HashMap<>();
-            JsonData hostObj = res.persistent().get(EsTriggerConstant.TRIGGER_IDX_HOST_KEY);
-            if (hostObj != null) {
-                re.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, hostObj.to(String.class));
+            JsonData confJson = res.persistent().get(EsTriggerConstant.NODE_CONF_PREFIX);
+            if (confJson == null) {
+                return new HashMap<>();
             }
 
-            JsonData userObj = res.persistent().get(EsTriggerConstant.TRIGGER_IDX_USER_KEY);
-            if (userObj != null) {
-                re.put(EsTriggerConstant.TRIGGER_IDX_USER_KEY, userObj.to(String.class));
-            }
-
-            JsonData passwdObj = res.persistent().get(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY);
-            if (passwdObj != null) {
-                re.put(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, passwdObj.to(String.class));
-            }
-
-            return re;
+            return confJson.to(Map.class);
         } catch (Exception e) {
             String errMsg = "Get cc node settings failed,msg:" + ExceptionUtils.getRootCauseMessage(e);
             log.error(errMsg, e);

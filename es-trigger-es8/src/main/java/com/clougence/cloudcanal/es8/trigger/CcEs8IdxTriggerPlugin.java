@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import com.clougence.cloudcanal.es8.trigger.ds.Es8ClientConn;
 import com.clougence.cloudcanal.es8.trigger.writer.CcEs8TriggerIdxWriterImpl;
 import com.clougence.cloudcanal.es_base.CcEsTriggerIdxWriter;
-import com.clougence.cloudcanal.es_base.ComponentLifeCycle;
 import com.clougence.cloudcanal.es_base.EsTriggerConstant;
 
 /**
@@ -49,6 +48,11 @@ public class CcEs8IdxTriggerPlugin extends Plugin {
 
     @Override
     public void onIndexModule(IndexModule indexModule) {
+        if (indexModule.getIndex().getName().equals(EsTriggerConstant.ES_TRIGGER_IDX)) {
+            log.info("Not subscribe " + EsTriggerConstant.ES_TRIGGER_IDX);
+            return;
+        }
+
         log.info("Add index listener,index:" + indexModule.getIndex());
 
         final CcEs8IdxOpListener cdcListener = new CcEs8IdxOpListener(indexModule, triggerIdxWriter);
@@ -74,7 +78,7 @@ public class CcEs8IdxTriggerPlugin extends Plugin {
     protected synchronized void initIdxWriter() {
         if (triggerIdxWriter == null) {
             triggerIdxWriter = new CcEs8TriggerIdxWriterImpl();
-            ((ComponentLifeCycle) triggerIdxWriter).start();
+            triggerIdxWriter.start();
         }
     }
 }

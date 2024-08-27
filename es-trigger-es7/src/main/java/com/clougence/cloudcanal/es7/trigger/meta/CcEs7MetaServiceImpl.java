@@ -36,37 +36,32 @@ public class CcEs7MetaServiceImpl implements CcMetaService {
             Map<String, Object> properties = new HashMap<>();
             Map<String, Object> scnF = new HashMap<>();
             scnF.put("type", "long");
-            scnF.put("index", true);
             properties.put("scn", scnF);
 
             Map<String, Object> idxNameF = new HashMap<>();
             idxNameF.put("type", "text");
-            idxNameF.put("index", true);
-            idxNameF.put("analyzer", "standard");
+            idxNameF.put("index", false);
             properties.put("idx_name", idxNameF);
 
             //I:INSERT,U:UPDATE,D:DELETE
             Map<String, Object> eventTypeF = new HashMap<>();
             eventTypeF.put("type", "text");
-            eventTypeF.put("index", true);
-            eventTypeF.put("analyzer", "standard");
+            eventTypeF.put("index", false);
             properties.put("event_type", eventTypeF);
 
             Map<String, Object> pkF = new HashMap<>();
             pkF.put("type", "text");
-            pkF.put("index", true);
-            pkF.put("analyzer", "standard");
+            pkF.put("index", false);
             properties.put("pk", pkF);
 
             Map<String, Object> rowDataF = new HashMap<>();
             rowDataF.put("type", "text");
-            rowDataF.put("index", true);
-            rowDataF.put("analyzer", "standard");
+            rowDataF.put("index", false);
             properties.put("row_data", rowDataF);
 
             Map<String, Object> cDateF = new HashMap<>();
             cDateF.put("type", "date");
-            cDateF.put("index", true);
+            cDateF.put("index", false);
             cDateF.put("format", "yyyy-MM-dd'T'HH:mm:ssSSS");
             properties.put("create_time", cDateF);
 
@@ -163,9 +158,15 @@ public class CcEs7MetaServiceImpl implements CcMetaService {
         }
     }
 
+    @Override
+    public Map<String, Object> queryIndexCcSettings(EsConnConfig connConfig, String idxName, List<String> keys) {
+        return null;
+    }
+
     protected void createIdx(String indexName, Map<String, Object> mapping, EsConnConfig connConfig) throws IOException {
         CreateIndexRequest request = new CreateIndexRequest(indexName);
         request.mapping(mapping);
+        request.settings(Settings.builder().put("index.number_of_shards", 10).put("index.number_of_replicas", 0));
 
         RestHighLevelClient esClient = Es7ClientHelper.generateEsClient(connConfig);
         CreateIndexResponse response = esClient.indices().create(request, RequestOptions.DEFAULT);

@@ -73,7 +73,7 @@ public class CcEs8IdxOpListener implements IndexingOperationListener, ComponentL
 
             ccEsTriggerIdxWriter.insertTriggerIdx(indexName, TriggerEventType.DELETE, delId, null);
         } catch (Exception e) {
-            log.error("Handle DELETE event error,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e));
+            log.error("Handle DELETE event error,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e), e);
         }
     }
 
@@ -112,7 +112,7 @@ public class CcEs8IdxOpListener implements IndexingOperationListener, ComponentL
                 ccEsTriggerIdxWriter.insertTriggerIdx(indexName, TriggerEventType.UPDATE, index.id(), docJson);
             }
         } catch (Exception e) {
-            log.error("Handle INDEX event error,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e));
+            log.error("Handle INDEX event error,but ignore.msg:" + ExceptionUtils.getRootCauseMessage(e), e);
         }
     }
 }

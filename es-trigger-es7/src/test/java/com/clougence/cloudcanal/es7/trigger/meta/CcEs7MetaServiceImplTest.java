@@ -16,7 +16,7 @@ public class CcEs7MetaServiceImplTest {
     @Test
     public void testCreateTriggerIdx() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("101.37.25.1:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         CcMetaService metaService = new CcEs7MetaServiceImpl();
         metaService.createTriggerIdx(connConfig);
@@ -25,7 +25,7 @@ public class CcEs7MetaServiceImplTest {
     @Test
     public void testUpsertSettings() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("101.37.25.1:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         CcMetaService metaService = new CcEs7MetaServiceImpl();
 
@@ -38,11 +38,11 @@ public class CcEs7MetaServiceImplTest {
     @Test
     public void testUpsertSettings_2() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("101.37.25.1:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         CcMetaService metaService = new CcEs7MetaServiceImpl();
 
-        List<String> indexs = Collections.singletonList("cc_my-vgpq6q097174t6t_console_worker_stats");
+        List<String> indexs = Collections.singletonList("cc_my-vgpq6q097174t6t_dingtax_worker_stats");
         Map<String, Object> settings = new HashMap<>();
         settings.put(EsTriggerConstant.IDX_ENABLE_CDC_CONF_KEY, true);
         metaService.upsertIndexSettings(connConfig, indexs, settings);
@@ -51,10 +51,10 @@ public class CcEs7MetaServiceImplTest {
     @Test
     public void testUpsertNodeSettings() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("101.37.25.1:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         Map<String, Object> re = new HashMap<>();
-        re.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, "172.16.29.38:9200");
+        re.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, "101.37.24.239:9200");
         re.put(EsTriggerConstant.TRIGGER_IDX_USER_KEY, null);
         re.put(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, null);
 
@@ -65,7 +65,7 @@ public class CcEs7MetaServiceImplTest {
     @Test
     public void testQueryCcNodeSettings() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("101.37.25.1:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         CcMetaService metaService = new CcEs7MetaServiceImpl();
         Map<String, Object> re = metaService.queryCcNodeSettings(connConfig);

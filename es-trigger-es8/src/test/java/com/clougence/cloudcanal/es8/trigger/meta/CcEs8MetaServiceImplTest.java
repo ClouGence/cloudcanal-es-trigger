@@ -1,15 +1,19 @@
 package com.clougence.cloudcanal.es8.trigger.meta;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import static com.clougence.cloudcanal.es_base.EsTriggerConstant.TRIGGER_IDX_MAX_SCN_KEY;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
+import com.clougence.cloudcanal.es8.trigger.ds.Es8ClientHelper;
 import com.clougence.cloudcanal.es_base.CcMetaService;
 import com.clougence.cloudcanal.es_base.EsConnConfig;
 import com.clougence.cloudcanal.es_base.EsTriggerConstant;
+
+import co.elastic.clients.elasticsearch.core.UpdateRequest;
 
 /**
  * @author bucketli 2024/7/31 14:40:44
@@ -54,10 +58,10 @@ public class CcEs8MetaServiceImplTest {
     @Test
     public void testUpsertNodeSettings() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("120.27.128.105:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         Map<String, Object> re = new HashMap<>();
-        re.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, "120.27.128.105:9200");
+        re.put(EsTriggerConstant.TRIGGER_IDX_HOST_KEY, "127.0.0.1:9200");
         re.put(EsTriggerConstant.TRIGGER_IDX_USER_KEY, null);
         re.put(EsTriggerConstant.TRIGGER_IDX_PASSWD_KEY, null);
 
@@ -68,10 +72,26 @@ public class CcEs8MetaServiceImplTest {
     @Test
     public void testQueryCcNodeSettings() {
         EsConnConfig connConfig = new EsConnConfig();
-        connConfig.setHosts("120.27.128.105:9200");
+        connConfig.setHosts("101.37.24.239:9200");
 
         CcMetaService metaService = new CcEs8MetaServiceImpl();
         Map<String, Object> re = metaService.queryCcNodeSettings(connConfig);
+        for (Map.Entry<String, Object> entry : re.entrySet()) {
+            if (entry.getValue() == null) {
+                System.out.println(entry.getKey() + " is null");
+            } else {
+                System.out.println(entry.getKey() + "  " + entry.getValue());
+            }
+        }
+    }
+
+    @Test
+    public void testQueryIndexSettings() {
+        EsConnConfig connConfig = new EsConnConfig();
+        connConfig.setHosts("101.37.24.239:9200");
+
+        CcMetaService metaService = new CcEs8MetaServiceImpl();
+        Map<String, Object> re = metaService.queryIndexCcSettings(connConfig, EsTriggerConstant.ES_TRIGGER_IDX, Arrays.asList(TRIGGER_IDX_MAX_SCN_KEY));
         for (Map.Entry<String, Object> entry : re.entrySet()) {
             if (entry.getValue() == null) {
                 System.out.println(entry.getKey() + " is null");

@@ -24,7 +24,7 @@ public class EsConnConfig {
 
     private Integer connTimeoutMs        = 5 * 1000;
 
-    private Integer connRequestTimeoutMs = 6 * 1000;
+    private Integer connRequestTimeoutMs = 5 * 1000;
 
     private Integer maxConnCount         = 32;
 

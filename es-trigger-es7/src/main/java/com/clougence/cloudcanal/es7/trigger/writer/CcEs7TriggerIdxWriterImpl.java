@@ -1,82 +1,57 @@
 package com.clougence.cloudcanal.es7.trigger.writer;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import static com.clougence.cloudcanal.es_base.EsTriggerConstant.TRIGGER_IDX_MAX_SCN_KEY;
 
-import org.apache.commons.lang3.StringUtils;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.settings.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.clougence.cloudcanal.es7.trigger.ds.Es7ClientConn;
-import com.clougence.cloudcanal.es_base.CcEsTriggerIdxWriter;
-import com.clougence.cloudcanal.es_base.ComponentLifeCycle;
+import com.clougence.cloudcanal.es_base.AbstractCcEsTriggerIdxWriter;
 import com.clougence.cloudcanal.es_base.EsTriggerConstant;
-import com.clougence.cloudcanal.es_base.TriggerEventType;
 
 /**
  * @author bucketli 2024/7/30 16:06:32
  */
-public class CcEs7TriggerIdxWriterImpl implements CcEsTriggerIdxWriter, ComponentLifeCycle {
+public class CcEs7TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
 
-    private static final AtomicBoolean inited             = new AtomicBoolean(false);
+    private static final Logger           log   = LoggerFactory.getLogger(CcEs7TriggerIdxWriterImpl.class);
 
-    private static final AtomicBoolean triggerIdxIdInited = new AtomicBoolean(false);
+    protected BlockingQueue<IndexRequest> cache = new ArrayBlockingQueue<>(cacheSize);
 
-    private static final Logger        log                = LoggerFactory.getLogger(CcEs7TriggerIdxWriterImpl.class);
+    protected boolean isClientInited() { return Es7ClientConn.instance.getEsClient() != null; }
 
-    private final AtomicLong           incrementId        = new AtomicLong(0);
-
-    private long                       currentStepMaxVal  = 0;
-
-    @Override
-    public void start() {
-        if (inited.compareAndSet(false, true)) {
-            log.info(this.getClass().getSimpleName() + " begin to start.");
-            initTriggerIdxId();
-            log.info(this.getClass().getSimpleName() + " start successfully.");
-        }
-    }
-
-    private void initTriggerIdxId() {
+    protected String fetchScnCurrVal() {
         try {
-            if (Es7ClientConn.instance.getEsClient() == null) {
-                return;
-            }
-
             GetSettingsRequest req = new GetSettingsRequest().indices(EsTriggerConstant.ES_TRIGGER_IDX);
             GetSettingsResponse res = Es7ClientConn.instance.getEsClient().indices().getSettings(req, RequestOptions.DEFAULT);
-            String s = res.getSetting(EsTriggerConstant.ES_TRIGGER_IDX, EsTriggerConstant.TRIGGER_IDX_MAX_SCN_KEY);
-            if (StringUtils.isBlank(s)) {
-                updateIncreIdToNextStep(0);
-            } else {
-                updateIncreIdToNextStep(Long.parseLong(s));
-            }
-
-            triggerIdxIdInited.compareAndSet(false, true);
+            return res.getSetting(EsTriggerConstant.ES_TRIGGER_IDX, TRIGGER_IDX_MAX_SCN_KEY);
         } catch (Exception e) {
-            String msg = "Init trigger index settings failed,init later.msg:" + ExceptionUtils.getRootCauseMessage(e);
-            log.error(msg, e);
-            //            throw new RuntimeException(msg, e);
+            throw new RuntimeException(e);
         }
     }
 
-    private void updateIncreIdToNextStep(long currentId) {
+    protected void updateIncreIdToNextStep(long nextStart) {
         try {
-            long nextVal = currentId + 10000;
-            Settings.Builder sb = Settings.builder().put(EsTriggerConstant.TRIGGER_IDX_MAX_SCN_KEY, nextVal);
+            Settings.Builder sb = Settings.builder().put(TRIGGER_IDX_MAX_SCN_KEY, nextStart);
             UpdateSettingsRequest req = new UpdateSettingsRequest().indices(EsTriggerConstant.ES_TRIGGER_IDX).settings(sb);
 
             AcknowledgedResponse res = Es7ClientConn.instance.getEsClient().indices().putSettings(req, RequestOptions.DEFAULT);
@@ -84,9 +59,7 @@ public class CcEs7TriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Componen
                 throw new RuntimeException("Update trigger index settings failed, acknowledged is false.");
             }
 
-            log.info("Updated incremental id,currStepMaxVal:" + nextVal);
-
-            currentStepMaxVal = nextVal;
+            log.info("Updated " + TRIGGER_IDX_MAX_SCN_KEY + " to " + nextStart);
         } catch (Exception e) {
             String msg = "Update trigger index settings failed.msg:" + ExceptionUtils.getRootCauseMessage(e);
             log.error(msg, e);
@@ -94,53 +67,60 @@ public class CcEs7TriggerIdxWriterImpl implements CcEsTriggerIdxWriter, Componen
         }
     }
 
-    private synchronized long nextId() {
-        if (!triggerIdxIdInited.get()) {
-            initTriggerIdxId();
+    @Override
+    protected void insertInner(Map<String, Object> doc, String srcIdx, String srcId) {
+        IndexRequest ir = new IndexRequest().index(EsTriggerConstant.ES_TRIGGER_IDX).source(doc);
 
-            if (!triggerIdxIdInited.get()) {
-                throw new IllegalArgumentException("Trigger idx id can not be inited,maybe datasource not ready.");
+        try {
+            boolean offered = this.cache.offer(ir, 2, TimeUnit.SECONDS);
+            if (!offered) {
+                log.warn("Offer to write cache timeout cause no space left,just skip and record here,idx_name:" + srcIdx + ",_id:" + srcId);
+            } else {
+                log.info("Offer document to cache success,_id:" + srcId);
             }
-        }
-
-        if (incrementId.get() > currentStepMaxVal) {
-            updateIncreIdToNextStep(incrementId.get());
-            return nextId();
-        } else {
-            return incrementId.incrementAndGet();
+        } catch (InterruptedException e) {
+            log.warn("Offer to cache interruppted,but skip,idx_name:" + srcIdx + ",_id:" + srcId);
         }
     }
 
     @Override
-    public void stop() {
-        if (inited.compareAndSet(true, false)) {
-            log.info(this.getClass().getSimpleName() + " stop successfully.");
+    public void run() {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                List<IndexRequest> irs = new ArrayList<>();
+                int real = cache.drainTo(irs, batchSize);
+                log.info("Drain " + real + " documents from cache");
+                if (real > 0) {
+                    BulkRequest reqs = new BulkRequest();
+                    for (IndexRequest ir : irs) {
+                        reqs.add(ir);
+                    }
+
+                    WriteRequest.RefreshPolicy refreshPolicy = WriteRequest.RefreshPolicy.NONE;
+                    reqs.setRefreshPolicy(refreshPolicy);
+
+                    log.info("Try to bulk documents,real:" + real);
+
+                    BulkResponse bulkResponse = Es7ClientConn.instance.getEsClient().bulk(reqs, RequestOptions.DEFAULT);
+
+                    for (BulkItemResponse response : bulkResponse) {
+                        if (response.isFailed()) {
+                            String errMsg = "bulk put FAILED!msg:" + response.getFailureMessage() + ",action id: " + response.getId();
+                            log.error(errMsg);
+                            throw new RuntimeException(errMsg);
+                        }
+                    }
+
+                    log.info("Bulk documents success,real:" + real);
+                }
+
+                //no need to sleep
+                if (real < batchSize) {
+                    Thread.sleep(1000);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Consume request from queue failed.msg:" + ExceptionUtils.getRootCauseMessage(e), e);
         }
-    }
-
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssSSS");
-
-    @Override
-    public void insertTriggerIdx(String idxName, TriggerEventType dataOp, String id, String docJson) throws IOException {
-        if (Es7ClientConn.instance.getEsClient() == null) {
-            log.warn("Es client is null,skip write data.");
-            return;
-        }
-
-        Map<String, Object> re = new HashMap<>();
-        long gid = nextId();
-        re.put("scn", gid);
-        re.put("idx_name", idxName);
-        re.put("event_type", dataOp.getCode());
-        re.put("pk", id);
-
-        if (docJson != null) {
-            re.put("row_data", docJson);
-        }
-
-        re.put("create_time", LocalDateTime.now().format(formatter));
-
-        UpdateRequest ur = new UpdateRequest().index(EsTriggerConstant.ES_TRIGGER_IDX).id(gid + "").doc(re).docAsUpsert(true);
-        Es7ClientConn.instance.getEsClient().update(ur, RequestOptions.DEFAULT);
     }
 }
