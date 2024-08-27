@@ -40,18 +40,21 @@ public class CcEs7MetaServiceImpl implements CcMetaService {
 
             Map<String, Object> idxNameF = new HashMap<>();
             idxNameF.put("type", "text");
-            idxNameF.put("index", false);
+            idxNameF.put("index", true);
+            idxNameF.put("analyzer", "standard");
             properties.put("idx_name", idxNameF);
 
             //I:INSERT,U:UPDATE,D:DELETE
             Map<String, Object> eventTypeF = new HashMap<>();
             eventTypeF.put("type", "text");
-            eventTypeF.put("index", false);
+            eventTypeF.put("index", true);
+            eventTypeF.put("analyzer", "standard");
             properties.put("event_type", eventTypeF);
 
             Map<String, Object> pkF = new HashMap<>();
             pkF.put("type", "text");
-            pkF.put("index", false);
+            pkF.put("index", true);
+            pkF.put("analyzer", "standard");
             properties.put("pk", pkF);
 
             Map<String, Object> rowDataF = new HashMap<>();
@@ -61,7 +64,7 @@ public class CcEs7MetaServiceImpl implements CcMetaService {
 
             Map<String, Object> cDateF = new HashMap<>();
             cDateF.put("type", "date");
-            cDateF.put("index", false);
+            cDateF.put("index", true);
             cDateF.put("format", "yyyy-MM-dd'T'HH:mm:ssSSS");
             properties.put("create_time", cDateF);
 

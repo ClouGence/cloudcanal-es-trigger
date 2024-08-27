@@ -19,7 +19,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
-import co.elastic.clients.elasticsearch.core.bulk.UpdateAction;
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.json.JsonData;
 
@@ -68,8 +68,14 @@ public class CcEs8TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
         try {
             GetIndicesSettingsRequest req = new GetIndicesSettingsRequest.Builder().index(idxName).name(keys).build();
             GetIndicesSettingsResponse res = esClient.indices().getSettings(req);
-            IndexSettings settings = res.result().get(idxName).settings();
             Map<String, Object> re = new HashMap<>();
+
+            if (res.result().get(idxName) == null) {
+                return re;
+            }
+
+            IndexSettings settings = res.result().get(idxName).settings();
+
             if (settings != null && settings.index() != null) {
                 Map<String, JsonData> x = settings.index().otherSettings();
                 if (x != null) {
@@ -85,7 +91,7 @@ public class CcEs8TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
 
             return re;
         } catch (Exception e) {
-            String errMsg = "Upsert settings to node,msg:" + ExceptionUtils.getRootCauseMessage(e);
+            String errMsg = "Query settings failed,msg:" + ExceptionUtils.getRootCauseMessage(e);
             log.error(errMsg, e);
             throw new RuntimeException(errMsg, e);
         }
@@ -93,10 +99,7 @@ public class CcEs8TriggerIdxWriterImpl extends AbstractCcEsTriggerIdxWriter {
 
     @Override
     protected void insertInner(Map<String, Object> doc, String srcIdx, String srcId) {
-        BulkOperation ir = new BulkOperation.Builder().update(i -> i.action(new UpdateAction.Builder<>() //
-            .doc(doc)
-            .docAsUpsert(true)
-            .build())).build();
+        BulkOperation ir = new BulkOperation.Builder().index(new IndexOperation.Builder<>().document(doc).build()).build();
 
         try {
             boolean offered = this.cache.offer(ir, 2, TimeUnit.SECONDS);

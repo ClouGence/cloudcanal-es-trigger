@@ -63,8 +63,7 @@ public class CcEs8MetaServiceImpl implements CcMetaService {
 
             Property.Builder rowDataF = new Property.Builder();
             TextProperty.Builder rowDataP = new TextProperty.Builder();
-            rowDataP.index(true);
-            rowDataP.analyzer("standard");
+            rowDataP.index(false);
             rowDataF.text(rowDataP.build());
             properties.put("row_data", rowDataF.build());
 
